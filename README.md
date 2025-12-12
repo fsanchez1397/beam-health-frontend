@@ -1,10 +1,7 @@
 # Beam Health Frontend
 
 A React + TypeScript + Vite application designed as an MVP for Beam Health’s physician workflow dashboard. The app integrates OpenAI’s Whisper-based speech processing to streamline clinical documentation. It can:
-Automatically transcribe conversations in real time
-Detect when speech stops to segment notes cleanly
-Identify and separate multiple speakers
-Generate suggested follow-up questions for physicians based on the conversation context
+Automatically transcribe conversations in real time, detect when speech stops to segment notes cleanly, identify and separate multiple speakers, and generate suggested follow-up questions for physicians based on the conversation context.
 This MVP demonstrates how AI-assisted note-taking can reduce administrative burden and support physicians during patient encounters.
 
 ## Features
