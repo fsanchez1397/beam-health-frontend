@@ -92,22 +92,6 @@ The frontend expects the following backend endpoints:
 
 ## Development
 
-### Project Structure
-
-```
-frontend/
-├── src/
-│   ├── App.tsx          # Main application component
-│   ├── App.css          # Dashboard styles
-│   ├── config.ts        # Backend configuration
-│   ├── services/
-│   │   └── api.ts       # API service functions
-│   └── types/
-│       └── index.ts     # TypeScript type definitions
-├── public/              # Static assets
-└── package.json         # Dependencies
-```
-
 ### Key Features
 
 1. **Active Appointment Detection**
@@ -131,18 +115,6 @@ frontend/
 
 No environment variables are required for the frontend. All configuration is done in `src/config.ts`.
 
-## Building for Production
-
-```bash
-npm run build
-# or
-yarn build
-# or
-pnpm build
-```
-
-The production build will be in the `dist/` directory.
-
 ## Troubleshooting
 
 ### Appointments Not Showing
@@ -165,24 +137,7 @@ The production build will be in the `dist/` directory.
    - Grant microphone access when prompted
    - Check browser settings if permission denied
 
-2. **Browser Compatibility**
-   - Requires modern browser with MediaRecorder API support
-   - Chrome, Firefox, Edge, Safari (latest versions)
-
 ### CORS Errors
 
 - Ensure backend CORS is configured to allow your frontend origin
 - Check that backend URL in `config.ts` is correct
-
-## Brand Colors
-
-- Primary Blue: `#005faa`
-- Teal: `#00a3ad`
-- Gold: `#fed580`
-- Text: `#333333`
-
-## Additional Resources
-
-- See `BACKEND_CONFIG.md` for detailed backend configuration
-- Backend API: https://beam-health-backend.onrender.com
-- Backend Repository: See `../backend/README.md`
