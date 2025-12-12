@@ -1,73 +1,188 @@
-# React + TypeScript + Vite
+# Beam Health Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React + TypeScript + Vite application for the Beam Health physician dashboard.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Real-time appointment detection and patient information display
+- Audio recording and transcription using OpenAI Whisper
+- AI-powered encounter summary generation
+- Editable encounter summaries with follow-up questions
+- Patient email notifications
+- Professional physician dashboard UI
 
-## React Compiler
+## Prerequisites
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Node.js (v18 or higher)
+- npm, yarn, or pnpm
+- Backend API running (local or external)
 
-## Expanding the ESLint configuration
+## Local Setup
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 1. Install Dependencies
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Configure Backend URL
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Edit `src/config.ts` to set your backend preference:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```typescript
+const USE_LOCAL_BACKEND = true;  // true for localhost, false for external
 ```
+
+**Local Backend:**
+- URL: `http://localhost:8000`
+- Requires backend server running locally
+- Use for development
+
+**External Backend:**
+- URL: `https://beam-health-backend.onrender.com`
+- Use for testing against deployed backend
+
+### 3. Start Development Server
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+```
+
+The application will be available at `http://localhost:5173` (or the port shown in terminal).
+
+## Backend Configuration
+
+### Switching Between Backends
+
+To switch between local and external backend, edit `src/config.ts`:
+
+```typescript
+// For local development
+const USE_LOCAL_BACKEND = true;
+
+// For external/production backend
+const USE_LOCAL_BACKEND = false;
+```
+
+The configuration automatically applies to all API calls:
+- Patient data fetching
+- Appointment detection
+- Audio transcription
+- Encounter summary generation
+- Email sending
+
+### Backend Endpoints
+
+The frontend expects the following backend endpoints:
+
+- `GET /api/patients` - Get all patients
+- `GET /api/patients/{id}` - Get patient by ID
+- `GET /api/appointments/active` - Get currently active appointment
+- `POST /transcribe` - Upload audio for transcription
+- `POST /api/encounter-summary` - Generate encounter summary
+- `POST /api/send-email` - Send email to patient
+
+## Development
+
+### Project Structure
+
+```
+frontend/
+├── src/
+│   ├── App.tsx          # Main application component
+│   ├── App.css          # Dashboard styles
+│   ├── config.ts        # Backend configuration
+│   ├── services/
+│   │   └── api.ts       # API service functions
+│   └── types/
+│       └── index.ts     # TypeScript type definitions
+├── public/              # Static assets
+└── package.json         # Dependencies
+```
+
+### Key Features
+
+1. **Active Appointment Detection**
+   - Automatically detects active appointments based on current time
+   - Updates every 30 seconds
+   - Displays patient information when appointment is active
+
+2. **Audio Recording**
+   - Records audio in WebM format
+   - Automatically stops after 30 seconds of silence
+   - AI greeting plays when recording starts
+   - Chunks accumulated and sent when recording stops
+
+3. **Encounter Summary**
+   - AI-generated summary from transcription
+   - Editable fields for all sections
+   - Follow-up questions suggestions
+   - Email functionality to send summary to patient
+
+### Environment Variables
+
+No environment variables are required for the frontend. All configuration is done in `src/config.ts`.
+
+## Building for Production
+
+```bash
+npm run build
+# or
+yarn build
+# or
+pnpm build
+```
+
+The production build will be in the `dist/` directory.
+
+## Troubleshooting
+
+### Appointments Not Showing
+
+1. **Check Backend Configuration**
+   - Verify `USE_LOCAL_BACKEND` in `src/config.ts` matches your setup
+   - Ensure backend is running if using local backend
+
+2. **Check Browser Console**
+   - Look for API errors or CORS issues
+   - Verify API calls are reaching the correct backend URL
+
+3. **Verify Active Appointment**
+   - Check if current time matches an appointment window
+   - Appointments must be "booked" with a `patient_id` to be active
+
+### Audio Recording Issues
+
+1. **Microphone Permissions**
+   - Grant microphone access when prompted
+   - Check browser settings if permission denied
+
+2. **Browser Compatibility**
+   - Requires modern browser with MediaRecorder API support
+   - Chrome, Firefox, Edge, Safari (latest versions)
+
+### CORS Errors
+
+- Ensure backend CORS is configured to allow your frontend origin
+- Check that backend URL in `config.ts` is correct
+
+## Brand Colors
+
+- Primary Blue: `#005faa`
+- Teal: `#00a3ad`
+- Gold: `#fed580`
+- Text: `#333333`
+
+## Additional Resources
+
+- See `BACKEND_CONFIG.md` for detailed backend configuration
+- Backend API: https://beam-health-backend.onrender.com
+- Backend Repository: See `../backend/README.md`
