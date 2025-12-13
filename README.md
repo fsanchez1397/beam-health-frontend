@@ -41,11 +41,11 @@ const USE_LOCAL_BACKEND = true;  // true for localhost, false for external
 **Local Backend:**
 - URL: `http://localhost:8000`
 - Requires backend server running locally
-- Use for development
 
 **External Backend:**
 - URL: `https://beam-health-backend.onrender.com`
 - Use for testing against deployed backend
+Please note that due to the limitations of the free tier of Renders plan the initial request to fetch the appointments may take longer as the instance has to start again
 
 ### 3. Start Development Server
 
