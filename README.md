@@ -102,7 +102,7 @@ The frontend expects the following backend endpoints:
 
 2. **Audio Recording**
    - Records audio in WebM format
-   - Automatically stops after 30 seconds of silence
+   - Automatically stops after 5 seconds of silence
    - AI greeting plays when recording starts
    - Chunks accumulated and sent when recording stops
 
