@@ -1,8 +1,98 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo, memo } from 'react'
 import type { Patient, Appointment, EncounterSummary } from './types'
 import { getPatient, getCurrentAppointment, getActiveAppointment, generateEncounterSummary, sendEmail } from './services/api'
 import { API_BASE_URL } from './config'
 import './App.css'
+
+// Memoized PatientInfo component to prevent unnecessary rerenders
+const PatientInfo = memo(({ patient, loading }: { patient: Patient | null; loading: boolean }) => {
+  // Memoize date formatting to prevent recalculation on every render
+  const formattedDob = useMemo(() => {
+    return patient ? new Date(patient.dob).toLocaleDateString() : '';
+  }, [patient?.dob]);
+
+  return (
+    <div className="patient-info-section" style={{ minHeight: '300px' }}>
+      {loading ? (
+        <div style={{ textAlign: "center", paddingTop: "2rem" }}>
+          <div className="loading-spinner" style={{ margin: "0 auto 1rem" }}></div>
+          <div>Loading patient data...</div>
+        </div>
+      ) : patient ? (
+        <>
+          <h3>Patient Information</h3>
+          <div className="patient-info-grid">
+            <div className="patient-info-item">
+              <div className="patient-info-label">Full Name</div>
+              <div className="patient-info-value">{patient.first_name} {patient.last_name}</div>
+            </div>
+            <div className="patient-info-item">
+              <div className="patient-info-label">Date of Birth</div>
+              <div className="patient-info-value">{formattedDob}</div>
+            </div>
+            <div className="patient-info-item">
+              <div className="patient-info-label">Email</div>
+              <div className="patient-info-value">{patient.email}</div>
+            </div>
+            <div className="patient-info-item">
+              <div className="patient-info-label">Phone</div>
+              <div className="patient-info-value">{patient.phone}</div>
+            </div>
+            <div className="patient-info-item">
+              <div className="patient-info-label">Gender</div>
+              <div className="patient-info-value" style={{ textTransform: "capitalize" }}>{patient.gender}</div>
+            </div>
+            <div className="patient-info-item">
+              <div className="patient-info-label">Patient ID</div>
+              <div className="patient-info-value">#{patient.id}</div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div style={{ textAlign: "center", paddingTop: "2rem", color: "#666" }}>
+          No patient data available
+        </div>
+      )}
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function for React.memo
+  // Only rerender if loading state or patient data actually changed
+  if (prevProps.loading !== nextProps.loading) {
+    return false; // Props changed, should rerender
+  }
+  
+  // Compare patient IDs
+  if (prevProps.patient?.id !== nextProps.patient?.id) {
+    return false; // Different patient, should rerender
+  }
+  
+  // Deep comparison of patient object (only if both exist)
+  if (prevProps.patient && nextProps.patient) {
+    const prevPatient = prevProps.patient;
+    const nextPatient = nextProps.patient;
+    
+    if (
+      prevPatient.first_name !== nextPatient.first_name ||
+      prevPatient.last_name !== nextPatient.last_name ||
+      prevPatient.dob !== nextPatient.dob ||
+      prevPatient.email !== nextPatient.email ||
+      prevPatient.phone !== nextPatient.phone ||
+      prevPatient.gender !== nextPatient.gender
+    ) {
+      return false; // Patient data changed, should rerender
+    }
+  }
+  
+  // If one is null and the other isn't, rerender
+  if (!!prevProps.patient !== !!nextProps.patient) {
+    return false;
+  }
+  
+  return true; // Props are equal, skip rerender
+});
+
+PatientInfo.displayName = 'PatientInfo';
 
 function App() {
   const [isRecording, setIsRecording] = useState(false);
@@ -33,6 +123,7 @@ function App() {
   const silenceCheckRef = useRef<number | null>(null);
   const isStoppingRef = useRef<boolean>(false);
   const processFinalChunksRef = useRef<(() => void) | null>(null);
+  const prevActiveAppointmentRef = useRef<Appointment | null>(null);
 
   // Check for active appointment based on current time and fetch patient data
   useEffect(() => {
@@ -45,47 +136,71 @@ function App() {
         
         if (!isMounted) return;
         
-        setActiveAppointment(active);
+        // Compare with previous appointment to prevent unnecessary state updates
+        const prevAppointment = prevActiveAppointmentRef.current;
+        let appointmentChanged = false;
         
-        // If there's an active appointment with a patient, fetch and display that patient
-        if (active && active.patient_id) {
-          const activePatientId = active.patient_id;
+        if (!prevAppointment && !active) {
+          // Both are null, no change
+          appointmentChanged = false;
+        } else if (!prevAppointment || !active) {
+          // One is null and the other isn't, changed
+          appointmentChanged = true;
+        } else {
+          // Both exist, compare properties
+          appointmentChanged = 
+            prevAppointment.id !== active.id ||
+            prevAppointment.patient_id !== active.patient_id ||
+            prevAppointment.start !== active.start;
+        }
+        
+        // Only update state if appointment actually changed
+        if (appointmentChanged) {
+          setActiveAppointment(active);
+          prevActiveAppointmentRef.current = active;
           
-          // Only fetch if it's a different patient to avoid unnecessary API calls
-          if (activePatientId !== patientId) {
-            setLoading(true);
-            try {
-              // Fetch patient data directly from backend
-              const patientData = await getPatient(activePatientId);
-              
-              if (!isMounted) return;
-              
-              if (patientData) {
-                setPatient(patientData);
-                setPatientId(activePatientId);
-                setCurrentAppointment(active);
-                setError(null);
+          // If there's an active appointment with a patient, fetch and display that patient
+          if (active && active.patient_id) {
+            const activePatientId = active.patient_id;
+            
+            // Only fetch if it's a different patient to avoid unnecessary API calls
+            if (activePatientId !== patientId) {
+              setLoading(true);
+              try {
+                // Fetch patient data directly from backend
+                const patientData = await getPatient(activePatientId);
+                
+                if (!isMounted) return;
+                
+                if (patientData) {
+                  setPatient(patientData);
+                  setPatientId(activePatientId);
+                  setCurrentAppointment(active);
+                  setError(null);
+                }
+              } catch (err) {
+                if (!isMounted) return;
+                console.error('Error fetching patient for active appointment:', err);
+                setError(err instanceof Error ? err.message : "Failed to fetch patient");
+              } finally {
+                if (isMounted) {
+                  setLoading(false);
+                }
               }
-            } catch (err) {
-              if (!isMounted) return;
-              console.error('Error fetching patient for active appointment:', err);
-              setError(err instanceof Error ? err.message : "Failed to fetch patient");
-            } finally {
-              if (isMounted) {
-                setLoading(false);
+            } else {
+              // Same patient, just update the current appointment if it changed
+              if (currentAppointment?.id !== active.id) {
+                setCurrentAppointment(active);
               }
             }
           } else {
-            // Same patient, just update the current appointment
-            setCurrentAppointment(active);
-          }
-        } else {
-          // No active appointment found - clear patient data
-          if (isMounted) {
-            setPatient(null);
-            setPatientId(1); // Reset to default
-            setCurrentAppointment(null);
-            setError(null);
+            // No active appointment found - clear patient data only if we had one before
+            if (isMounted && patient) {
+              setPatient(null);
+              setPatientId(1); // Reset to default
+              setCurrentAppointment(null);
+              setError(null);
+            }
           }
         }
       } catch (err) {
@@ -625,43 +740,8 @@ ${summaryToSend.treatment_care_plan}
             </div>
           </div>
 
-          {/* Patient Information */}
-          {loading ? (
-            <div className="patient-info-section" style={{ textAlign: "center" }}>
-              <div className="loading-spinner" style={{ margin: "0 auto 1rem" }}></div>
-              <div>Loading patient data...</div>
-            </div>
-          ) : patient ? (
-            <div className="patient-info-section">
-              <h3>Patient Information</h3>
-              <div className="patient-info-grid">
-                <div className="patient-info-item">
-                  <div className="patient-info-label">Full Name</div>
-                  <div className="patient-info-value">{patient.first_name} {patient.last_name}</div>
-                </div>
-                <div className="patient-info-item">
-                  <div className="patient-info-label">Date of Birth</div>
-                  <div className="patient-info-value">{new Date(patient.dob).toLocaleDateString()}</div>
-                </div>
-                <div className="patient-info-item">
-                  <div className="patient-info-label">Email</div>
-                  <div className="patient-info-value">{patient.email}</div>
-                </div>
-                <div className="patient-info-item">
-                  <div className="patient-info-label">Phone</div>
-                  <div className="patient-info-value">{patient.phone}</div>
-                </div>
-                <div className="patient-info-item">
-                  <div className="patient-info-label">Gender</div>
-                  <div className="patient-info-value" style={{ textTransform: "capitalize" }}>{patient.gender}</div>
-                </div>
-                <div className="patient-info-item">
-                  <div className="patient-info-label">Patient ID</div>
-                  <div className="patient-info-value">#{patient.id}</div>
-                </div>
-              </div>
-            </div>
-          ) : null}
+          {/* Patient Information - Memoized component with reserved space */}
+          <PatientInfo patient={patient} loading={loading} />
         </>
       ) : (
         /* No Active Appointment Message */
