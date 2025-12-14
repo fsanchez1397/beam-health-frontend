@@ -17,6 +17,7 @@ function App() {
   const [encounterSummary, setEncounterSummary] = useState<EncounterSummary | null>(null);
   const [generatingSummary, setGeneratingSummary] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [editedSummary, setEditedSummary] = useState<EncounterSummary | null>(null);
@@ -150,34 +151,7 @@ function App() {
     fetchPatientData();
   }, [patientId, patient]);
 
-  // Text-to-speech function
-  const speakGreeting = (): Promise<void> => {
-    return new Promise((resolve) => {
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(
-          "Hello, I am Max and I will be your AI physician assistant today. I will be here to take notes only"
-        );
-        utterance.rate = 0.9; // Slightly slower for clarity
-        utterance.pitch = 1;
-        utterance.volume = 1;
-        
-        utterance.onend = () => {
-          console.log('✅ Greeting speech completed');
-          resolve();
-        };
-        
-        utterance.onerror = (error) => {
-          console.error('❌ Speech synthesis error:', error);
-          resolve(); // Continue even if speech fails
-        };
-        
-        window.speechSynthesis.speak(utterance);
-      } else {
-        console.warn('Speech synthesis not supported');
-        resolve();
-      }
-    });
-  };
+
 
   // Silence detection function
   const setupSilenceDetection = (stream: MediaStream) => {
@@ -217,7 +191,7 @@ function App() {
           // Sound detected - reset silence timer
           lastSoundTimeRef.current = Date.now();
         } else {
-          // Silence detected - check if it's been 30 seconds
+          // Silence detected - check silence duration
           const silenceDuration = Date.now() - lastSoundTimeRef.current;
           
           if (silenceDuration >= SILENCE_DURATION) {
@@ -254,8 +228,6 @@ function App() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
-      // Speak greeting before starting recording
-      await speakGreeting();
       
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: "audio/webm",
@@ -280,6 +252,7 @@ function App() {
           console.log(`✅ Found ${chunksRef.current.length} chunks (${totalSize} bytes total), uploading...`);
           const blob = new Blob(chunksRef.current, { type: "audio/webm" });
           chunksRef.current = []; // Clear after creating blob
+          setIsTranscribing(true); // Immediately signal transcription started
           uploadChunk(blob);
         } else {
           console.log('⚠️ No chunks accumulated - nothing to upload');
@@ -586,6 +559,7 @@ ${summaryToSend.treatment_care_plan}
       };
       
       setTranscript((prev) => [...prev, transcriptionWithPatient]);
+      setIsTranscribing(false); // Transcription complete
       
       // Auto-generate encounter summary if we have a patient
       if (patientId && data) {
@@ -594,6 +568,7 @@ ${summaryToSend.treatment_care_plan}
     } catch (err) {
       console.error("❌ Upload error:", err);
       setError(err instanceof Error ? `Upload failed: ${err.message}` : "Failed to upload audio chunk");
+      setIsTranscribing(false); // Transcription failed, clear status
     }
   };
 
@@ -739,7 +714,13 @@ ${summaryToSend.treatment_care_plan}
           <div className="dashboard-card-header">
             <h2 className="dashboard-card-title">Encounter Summary</h2>
             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              {generatingSummary && (
+              {isTranscribing && (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#005faa" }}>
+                  <div className="loading-spinner"></div>
+                  Transcribing audio...
+                </div>
+              )}
+              {generatingSummary && !isTranscribing && (
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#005faa" }}>
                   <div className="loading-spinner"></div>
                   Generating...

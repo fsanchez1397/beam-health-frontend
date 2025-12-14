@@ -19,3 +19,4 @@ const USE_LOCAL_BACKEND = false; // Set to false for external backend
 
 The configuration is automatically applied to all API calls throughout the application.
 
+
